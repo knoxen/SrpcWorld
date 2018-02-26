@@ -22,6 +22,7 @@ defmodule SrpcWorld.Application.Mixfile do
     [
       {:httpoison, "~> 1.0"},
       {:poison, "~> 3.1"},
+      {:srpc_poison, path: "local/srpc_poison", compile: false},
       {:srpc_client, path: "local/srpc_client", compile: false},
       {:srpc_lib, path: "local/srpc_lib", compile: false, override: true},
       {:earmark, "~> 1.2", only: :dev},

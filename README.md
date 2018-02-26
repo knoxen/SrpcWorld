@@ -4,7 +4,7 @@
 
 The Secure Remote Password Cryptor (SRPC) is a security framework based on the [Secure Remote Password](http://srp.stanford.edu/) (SRP) protocol. SRPC builds on SRP to provide application-layer security for client/server communications.
 
-The primary purpose of the `SrpcWorld` demo is to show the touch points for application integration of the SRPC framework. The demo can also be configured to use a client-side proxy to examine the structure of the SRPC messaging packets.
+The primary purpose of the `SrpcWorld` demo is to show the touch points for application integration of the SRPC framework. The demo can be configured to use a client-side proxy to examine the structure of the SRPC messaging packets.
 
 The `SrpcWorld` demo consists of the following server and client applications:
 
@@ -218,10 +218,12 @@ config :srpc_client, :server,
   port: 8082
 ```
 
+###### :srpc_poison
+
 An optional `proxy` configuration allows  HTTP traffic to be channeled through a proxy for inspection purposes. This setting is passed to `HTTPoison` as a request option. See [HTTPoison](https://hexdocs.pm/httpoison/HTTPoison.html#request/5) for further information. Setting the `proxy` configuration would look like:
 
 ```elixir
-  proxy: "http://localhost.charlesproxy.com:8888"
+config :srpc_poison, proxy: "http://localhost.charlesproxy.com:8888"
 ```
 
 [Table of Contents](#TOC)
@@ -250,7 +252,7 @@ Because the `SrpcClient.connect/0` call does not specify user credentials, the c
 
 ```elixir
 client:iex> SrpcClient.info(conn)
-%{accessed: 29, created: 29, keyed: 29, name: :LibConnection_2}
+%SrpcClient.Conn.Info{accessed: 29, created: 29, keyed: 29, name: :LibConnection_2}
 ```
 
 The info reports (in seconds) how long ago the connection was created, accessed, and keyed, as well as the name. Note the `conn` reference actually represents the second connection we created since we didn't capture the first.
@@ -266,7 +268,7 @@ Inspecting the connection info again, we'll see the access age has been updated:
 
 ```elixir
 client:iex> SrpcClient.info(conn)
-%{accessed: 18, created: 127, keyed: 127, name: :LibConnection_2}
+%SrpcClient.Conn.Info{accessed: 18, created: 127, keyed: 127, name: :LibConnection_2}
 ```
 
 We can close `:LibConnection_2` and get a new one
@@ -277,10 +279,11 @@ client:iex> SrpcClient.close(conn)
 client:iex> {:ok, conn} = SrpcClient.connect()
 {:ok, #PID<0.304.0>}
 client:iex> SrpcClient.info(conn)
-%{accessed: 10, created: 10, keyed: 10, name: :LibConnection_3}
+%SrpcClient.Conn.Info{accessed: 10, created: 10, keyed: 10, name: :LibConnection_3}
+client:iex> :observer.start
 ```
 
-Using `:observer.start/0` the `SrpcClient` application structure at this point looks like:
+The `SrpcClient` application structure at this point looks like:
 
 ![](images/SrpcClient-observer.png)
 
@@ -295,7 +298,7 @@ We still have our one, lone `LibConnection_3` connection bound to `conn`. We can
 
 ```elixir
 client:iex> SrpcClient.info(conn, :full)
-%{
+%SrpcClient.Conn{
   accessed: -576460709,
   conn_id: "GRTrtTQjRhDFFMdj6m9jR6QP8f",
   created: -576460709,
@@ -303,13 +306,13 @@ client:iex> SrpcClient.info(conn, :full)
   keyed: -576460709,
   name: :LibConnection_3,
   proxy: "http://localhost.charlesproxy.com:8888",
-  req_hmac_key: <<52, 73, 54, 87, 104, 254, 169, 40, 20, 48, 14, 35, 227, 56,
+  req_mac_key: <<52, 73, 54, 87, 104, 254, 169, 40, 20, 48, 14, 35, 227, 56,
     249, 112, 167, 148, 100, 227, 229, 169, 224, 225, 72, 30, 187, 12, 166, 244,
     71, 164>>,
   req_sym_key: <<234, 195, 65, 96, 32, 2, 210, 55, 188, 103, 57, 243, 230, 33,
     237, 128, 199, 236, 149, 153, 115, 110, 89, 249, 216, 181, 78, 42, 22, 30,
     118, 198>>,
-  resp_hmac_key: <<211, 138, 26, 169, 189, 154, 35, 121, 6, 115, 110, 117, 167,
+  resp_mac_key: <<211, 138, 26, 169, 189, 154, 35, 121, 6, 115, 110, 117, 167,
     210, 180, 181, 62, 178, 139, 132, 113, 169, 82, 240, 192, 128, 22, 9, 122,
     92, 119, 32>>,
   resp_sym_key: <<38, 19, 157, 118, 106, 136, 168, 68, 120, 135, 239, 58, 110,
@@ -323,7 +326,7 @@ client:iex> SrpcClient.info(conn, :full)
 }
 ```
 
-The information includes four binary keys, two each for encryption and hmac of requests and responses. The client and server use the `*_sym_key`s for confidentiality and the `*_hmac_key`s keys for data integrity and origin.
+The information includes four binary keys. The `*_sym_key`s are used for encryption (confidentiality) and the `*_mac_key`s are used for message authentication codes (data integrity and origin). Distinct keys are used in each direction of messaging.
 
 Let's see how this connection info is handled on the server side. For the `SrpcWorld` demo, server-side SRPC processing is handled by the `SrpcPlug` module. There is an `:srpc_srv` module (written in Erlang) but it is a library, not an application, and hence has no state. It is up to the server-side application to provide necessary SRPC state management via a module providing the `:srpc_handler` behaviour. In the `SrpcWorld` demo, the configured [SRPC handler](#ServerConfig) is `SrpcWorld.Server.SrpcHandler`. 
 
@@ -334,22 +337,22 @@ server:iex> SrpcWorld.Server.SrpcHandler.get_conn("GRTrtTQjRhDFFMdj6m9jR6QP8f")
 {:ok,
   %{
     conn_id: "GRTrtTQjRhDFFMdj6m9jR6QP8f",
-    conn_type: :lib,
     entity_id: "srpc_demo_Gc6kmLMM",
-    req_hmac_key: <<52, 73, 54, 87, 104, 254, 169, 40, 20, 48, 14, 35, 227,
+    req_mac_key: <<52, 73, 54, 87, 104, 254, 169, 40, 20, 48, 14, 35, 227,
       56, 249, 112, 167, 148, 100, 227, 229, 169, 224, 225, 72, 30, 187, 12,
       166, 244, 71, 164>>,
     req_sym_key: <<234, 195, 65, 96, 32, 2, 210, 55, 188, 103, 57, 243, 230,
       33, 237, 128, 199, 236, 149, 153, 115, 110, 89, 249, 216, 181, 78, 42,
       22, 30, 118, 198>>,
-    resp_hmac_key: <<211, 138, 26, 169, 189, 154, 35, 121, 6, 115, 110, 117,
+    resp_mac_key: <<211, 138, 26, 169, 189, 154, 35, 121, 6, 115, 110, 117,
       167, 210, 180, 181, 62, 178, 139, 132, 113, 169, 82, 240, 192, 128, 22,
       9, 122, 92, 119, 32>>,
     resp_sym_key: <<38, 19, 157, 118, 106, 136, 168, 68, 120, 135, 239, 58,
       110, 5, 51, 213, 111, 217, 207, 234, 181, 241, 47, 241, 35, 232, 163,
       180, 122, 233, 164, 108>>,
     sha_alg: :sha256,
-    sym_alg: :aes256
+    sym_alg: :aes256,
+    type: :lib
   }}
 ```
 
@@ -405,20 +408,20 @@ As with previous connections, we can inspect a user connection using `SrpcClient
 
 ```elixir
 client:iex> SrpcClient.info(conn, :full)
-%{
+%SrpcClient.Conn{
   accessed: -576460693,
   conn_id: "NQbJJ2hBgjjfqnJ9Lfm4tQHm6Q",
   created: -576460693,
   entity_id: "chigurh",
   keyed: -576460693,
   name: :UserConnection_1,
-  req_hmac_key: <<85, 145, 155, 185, 254, 33, 95, 231, 12, 192, 116, 68, 6, 149,
+  req_mac_key: <<85, 145, 155, 185, 254, 33, 95, 231, 12, 192, 116, 68, 6, 149,
     109, 117, 171, 79, 104, 250, 237, 131, 217, 249, 205, 173, 137, 23, 1, 0,
     136, 90>>,
   req_sym_key: <<107, 204, 232, 133, 180, 85, 147, 217, 183, 125, 167, 38, 95,
     5, 221, 122, 117, 57, 54, 156, 93, 219, 77, 223, 196, 151, 156, 242, 25,
     139, 118, 71>>,
-  resp_hmac_key: <<244, 119, 176, 20, 34, 129, 131, 0, 243, 145, 92, 157, 139,
+  resp_mac_key: <<244, 119, 176, 20, 34, 129, 131, 0, 243, 145, 92, 157, 139,
     187, 202, 209, 193, 170, 245, 217, 250, 60, 197, 238, 194, 13, 23, 204, 138,
     253, 248, 161>>,
   resp_sym_key: <<233, 191, 187, 135, 233, 138, 127, 153, 128, 20, 228, 196,
@@ -427,6 +430,7 @@ client:iex> SrpcClient.info(conn, :full)
   sha_alg: :sha256,
   sym_alg: :aes256,
   time_offset: 0,
+  type: :user
   url: "http://localhost:8082"
 }
 ```
@@ -438,23 +442,23 @@ server:iex> SrpcWorld.Server.SrpcHandler.get_conn("NQbJJ2hBgjjfqnJ9Lfm4tQHm6Q")
 {:ok,
  %{
    conn_id: "NQbJJ2hBgjjfqnJ9Lfm4tQHm6Q",
-   conn_type: :user,
    entity_id: "chigurh",
-   req_hmac_key: <<85, 145, 155, 185, 254, 33, 95, 231, 12, 192, 116, 68, 6,
+   req_mac_key: <<85, 145, 155, 185, 254, 33, 95, 231, 12, 192, 116, 68, 6,
      149, 109, 117, 171, 79, 104, 250, 237, 131, 217, 249, 205, 173, 137, 23, 1,
      0, 136, 90>>,
    req_sym_key: <<107, 204, 232, 133, 180, 85, 147, 217, 183, 125, 167, 38, 95,
      5, 221, 122, 117, 57, 54, 156, 93, 219, 77, 223, 196, 151, 156, 242, 25,
      139, 118, 71>>,
-   resp_hmac_key: <<244, 119, 176, 20, 34, 129, 131, 0, 243, 145, 92, 157, 139,
+   resp_mac_key: <<244, 119, 176, 20, 34, 129, 131, 0, 243, 145, 92, 157, 139,
      187, 202, 209, 193, 170, 245, 217, 250, 60, 197, 238, 194, 13, 23, 204,
      138, 253, 248, 161>>,
    resp_sym_key: <<233, 191, 187, 135, 233, 138, 127, 153, 128, 20, 228, 196,
      234, 1, 137, 231, 0, 213, 178, 221, 226, 232, 123, 97, 71, 109, 228, 39,
      228, 168, 81, 219>>,
    sha_alg: :sha256,
-   sym_alg: :aes256
+   sym_alg: :aes256,
+   type: :user
  }}
 ```
 
-SRPC lib and user connections are identical in terms of use. The only difference is a lib connection represents a mutually authentication between the SRPC framework libraries in use, whereas a user connection __*also*__ performs authentication via a user's password (client) and verifier (server). Note the emphasis of __*also*__. Since both user registration and login require an existing SRPC connection (which could be either lib or user), that connection must be rooted in an SRPC lib connection.
+SRPC lib and user connections are identical in terms of use. The only difference is a lib connection represents a mutually authenticated channel between the SRPC framework libraries in use, whereas a user connection __*also*__ ensures mutual authentication via the user's password (client) and verifier (server). Note the emphasis of __*also*__. Both user registration and login require an existing SRPC lib or user connection. If a user connection is used, that connection must be rooted in an SRPC lib connection. This ensures no user information is ever transmitted unencrypted.
