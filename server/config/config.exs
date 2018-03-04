@@ -14,7 +14,7 @@ config :kncache,
   caches: [
     srpc_exch: 30,
     srpc_nonce: 35,
-    srpc_conn: 10800,
-    srpc_reg: 10800,
-    user_data: 10800
+    srpc_conn: 3600,
+    srpc_reg: 3600,
+    user_data: 3600
   ]
