@@ -129,7 +129,7 @@ defmodule SrpcWorld.Lights do
   defp status(conn) do
     conn
     |> SrpcClient.get("/status")
-    |> status_reply(conn)
+    |> status_reply
   end
 
   ## -----------------------------------------------------------------------------------------------
@@ -142,12 +142,12 @@ defmodule SrpcWorld.Lights do
 
     conn
     |> SrpcClient.post("/action", action)
-    |> status_reply(conn)
+    |> status_reply
   end
 
   ## -----------------------------------------------------------------------------------------------
   ##  Reply with the status as a map, or as an error term
   ## -----------------------------------------------------------------------------------------------
-  defp status_reply({:ok, status}, conn), do: {:reply, Poison.decode!(status), conn}
-  defp status_reply(error, conn), do: {:reply, error, conn}
+  defp status_reply({{:ok, status}, conn}), do: {:reply, Poison.decode!(status), conn}
+  defp status_reply({error, conn}), do: {:reply, error, conn}
 end
