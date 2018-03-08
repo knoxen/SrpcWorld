@@ -9,7 +9,7 @@ The primary purpose of this demo is to show the touch points for Elixir applicat
 The `SrpcWorld` demo consists of the following server and client applications:
 
   - `SrpcWorld.Server` provides implementation for the following routes
-  
+
      - Simple HTTP requests
         - `/hello` &ndash; says hello to the `name` specified in a URL request query string
         - `/reverse` &ndash; reverses data provided in a URL request
@@ -34,10 +34,12 @@ SRPC framework functionality is added through `SrpcPlug` on the server side and 
     - [User Registration](#UserRegistration)
     - [User Connection](#UserConnection)
     - [Key Refresh](#KeyRefresh)
+    - [Reconnect](#Reconnect)
+  - [Fin](#Fin)
 
 ### <a name="Install"></a>Install Elixir
 
-The Elixir language organization has detailed information regarding the [installation of Elixir](https://elixir-lang.org/install.html). 
+The Elixir language organization has detailed information regarding the [installation of Elixir](https://elixir-lang.org/install.html).
 
 <div style="text-align: right">[Table of Contents](#TOC)</div>
 
@@ -56,21 +58,19 @@ mix compile
 
 In the `server` directory:
 
-```bash
-iex -S mix
-....
-server:iex>
-```
+<pre><code class="bash">> iex -S mix
+&hellip;
+<strong>server &there4;</strong>
+</code></pre>
 
 In the `client` directory:
 
-```bash
-iex -S mix
-....
-client:iex>
-```
+<pre><code class="bash">> iex -S mix
+&hellip;
+<strong>client &there4;</strong>
+</code></pre>
 
-Each directory contains an `.iex.exs` file that sets the IEx prompt.
+Each directory contains an `.iex.exs` file that sets the IEx prompt to either client or server, followed by a &there4; sign.
 
 <div style="text-align: right">[Table of Contents](#TOC)</div>
 
@@ -80,78 +80,65 @@ Each directory contains an `.iex.exs` file that sets the IEx prompt.
 
 `SrpcWorld.Client` provides an API to access `SrpcWorld.Server`. For example, `SrpcWorld.Client.say_hello/1` sends an HTTP GET `/hello` request to the server. However, we want this communication to be secure, so `SrpcWorld.Client` actually uses the SRPC framework to make the call. First, let's say hello to "Elixir" in the client IEx shell.
 
-```elixir
-client:iex> SrpcWorld.Client.say_hello("Elixir")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Client.say_hello("Elixir")
 10:02:21.703 [info]  Connected to http://localhost:8082
 "Aloha Elixir"
-```
+</code></pre>
 
 The `SrpcWorld.Server` is apparently vacationing in Hawai&#8216;i as we see the __*say_hello*__ response is _Aloha Elixir_.
 
-The info log message received before the __*say_hello*__ response informs us that the client connected to the `SrpcWorld.Server` at the specified URL. Whenever the `SrpcWorld.Client` makes a call, it uses an SRPC connection maintained in its `GenServer` state. Since there was no existing connection, one was created in `SrpcWorld.Client` with the call
+The info log message received before the __*say_hello*__ response informs us that the client connected to the `SrpcWorld.Server` at the specified URL. Whenever the `SrpcWorld.Client` makes a call, it reuses an SRPC connection maintained in its `GenServer` state. Since there was no existing connection, one was created in `SrpcWorld.Client` with the call:
+
 ```elixir
   {:ok, conn} = SrpcClient.connect()
 ```
 
-`SrpcClient.connect/0` returns a `SrpcClient.Connection` that can be used to make secure calls to the `SrpcWorld.Server`, such as in the implementation of `SrpcWorld.Client.say_hello/1`:
+`SrpcClient.connect/0` returns a `SrpcClient.Connection` that is used to send secure messages to the `SrpcWorld.Server`. The connection is passed as the first parameter to `SrpcClient` functions such as in the implementation of `SrpcWorld.Client.say_hello/1`:
 
 ```elixir
   conn
   |> SrpcClient.get("/hello?name=#{name}")
 ```
 
-Subsequent `SrpcWorld.Client` calls use the same `SrpcClient.Connection`:
+Subsequent `SrpcWorld.Client` calls reuse the same `SrpcClient.Connection`:
 
-```elixir
-client:iex> SrpcWorld.Client.reverse("Stressed was I ere I saw desserts")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Client.reverse("Stressed was I ere I saw desserts")
 "stressed was I ere I saw dessertS"
-```
+</code></pre>
 
 ##### Controlling lights
 
-`SrpcWorld.Server` also fronts a set of virtual lights that can be controlled using the client-side `SrpcWorld.Lights` module. Controlling the lights first requires a valid user login. For this demo we'll register a user on the fly with `SrpcWorld.Client.register/2`.
+`SrpcWorld.Server` fronts a set of virtual lights that can be controlled using the client-side `SrpcWorld.Lights` module. Controlling the lights requires a valid user login. The demo server includes setup of user __*srpc*__ with password __*secret*__. To login, we use `SrpcWorld.Lights.login/2`:
 
-```elixir
-client:iex> SrpcWorld.Client.register("srpc", "secret")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Lights.login("srpc", "secret")
 :ok
-```
-
-Now we can login to the `SrpcWorld.Server` using `SrpcWorld.Lights.login/2`:
-
-```elixir
-client:iex> SrpcWorld.Lights.login("srpc", "secret")
-:ok
-```
+</code></pre>
 
 If you've configured a proxy to observe SRPC traffic you'll see that no information regarding the user ID or password is visible (or leaks) during either SRPC registration or login messaging. In fact, the user password *never leaves the client*. The [Under the Hood](#UnderTheHood) section describes what data is actually used to authenticate a user.
 
 Let's get the status of the lights:
 
-```elixir
-client:iex> SrpcWorld.Lights.status()
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Lights.status()
 %{"green" => "off", "red" => "off", "yellow" => "off"}
-```
+</code></pre>
 
 All the lights are off. Let's turn the **red** light on:
 
-```elixir
-client:iex> SrpcWorld.Lights.on("red")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Lights.on("red")
 %{"green" => "off", "red" => "on", "yellow" => "off"}
-```
+</code></pre>
 
 Now let's turn the **green** light on:
 
-```elixir
-client:iex> SrpcWorld.Lights.on("green")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Lights.on("green")
 %{"green" => "on", "red" => "on", "yellow" => "off"}
-```
+</code></pre>
 
 Note the **red** light stayed on. We could use `SrpcWorld.Lights.off/1` to turn the **red** light off, or we could use `SrpcWorld.Lights.switch/1` which switches to a particular light and turns all others off:
 
-```elixir
-client:iex> SrpcWorld.Lights.switch("yellow")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcWorld.Lights.switch("yellow")
 %{"green" => "off", "red" => "off", "yellow" => "on"}
-```
+</code></pre>
 
 In each of the above calls, `SrpcWorld.Lights` is sending HTTP JSON API requests to `SrpcWorld.Server` using `SrpcClient.post/2`. All the calls are secured via the SRPC framework.
 
@@ -180,8 +167,16 @@ Server-side SRPC framework functionality is provided by the `SrpcPlug` module. `
 
 ```elixir
 config :srpc_plug,
-    srpc_file: "priv/server.srpc",
-    srpc_handler: SrpcWorld.Server.SrpcHandler
+  srpc_file: "priv/server.srpc",
+  srpc_handler: SrpcWorld.Server.SrpcHandler
+```
+
+`SrpcPlug` is compiled with a time-limited demo of the SRPC framework that is valid for just over 3 hours after server startup. If the `SrpcWorld.Server` attempts to process a message through `SrpcPlug` after running for more than this time limit the plug will return a custom Fahrenheit 451 status code. Per the `Plug` documentation, this custom code status must be specified in the server configuration as follows:
+
+```elixir
+config :plug, :statuses, %{
+  451 => "Srpc Demo Expired"
+}
 ```
 
 The `SrpcWorld` demo uses `Cowboy` for its HTTP server.
@@ -243,7 +238,7 @@ config :srpc_poison, proxy: "http://localhost.charlesproxy.com:8888"
 
 <div style="text-align: right">[Table of Contents](#TOC)</div>
 
-### <a name="UnderTheHood"></a>Under The Hood
+### <a name="UnderTheHood"></a>Under the Hood
 
 Both `SrpcWorld.Client` and `SrpcWorld.Lights` use an `SrpcClient.Connection` to communicate securely with `SrpcWorld.Server`. `SrpcWorld.Client` does not require a valid user login but still ensures mutual authentication between the `SrpcClient` being used by `SrpcWorld.Client` and the `SrpcPlug` being used by `SrpcWorld.Server`. This mutual authentication is achieved using values in the files specified by the `:srpc_file` configuration of the [client](#ClientConfig) and [server](#ServerConfig). These values form the [SRP](http://srp.stanford.edu/design.html) pre-defined relationship between the SRPC client and server processes.
 
@@ -253,22 +248,19 @@ Both `SrpcWorld.Client` and `SrpcWorld.Lights` use an `SrpcClient.Connection` to
 
 Let's take a peek under the hood by creating an `SrpcClient.Connection`. It would be best to [restart](#Start) both the client and server applications to clean out any residue from earlier demo activity. The client and server IEx sessions can each be terminated by using Cntl-C twice.
 
-```elixir
-client:iex> SrpcClient.connect()
-{:ok, #PID<0.232.0>}
-```
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.connect()
+{:ok, #PID<0.226.0>}
+</code></pre>
 
 `SrpcClient.connect/0` returns `{:ok, conn_pid}` for a successful connection attempt. We created a connection, but didn't grab it. Let's fix that:
 
-```elixir
-client:iex> {:ok, conn} = SrpcClient.connect()
-{:ok, #PID<0.232.0>}
-```
+<pre><code class="elixir"><strong>client &there4;</strong> {:ok, conn} = SrpcClient.connect()
+{:ok, #PID<0.226.0>}
+</code></pre>
 
 Because the `SrpcClient.connect/0` call does not specify user credentials, the connection returned is an SRPC __*lib connection*__ (i.e., a connection that has mutually authenticated the SRPC libraries in use). We can get information regarding the connection using `SrpcClient.info/1`:
 
-```elixir
-client:iex> SrpcClient.info(conn)
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.info(conn)
 %SrpcClient.Conn.Info{
   accessed: 12,
   count: 0,
@@ -276,39 +268,36 @@ client:iex> SrpcClient.info(conn)
   keyed: 12,
   name: :LibConnection_2
 }
-```
+</code></pre>
 
 The info reports how long ago (in seconds) the connection was created, accessed, and keyed, as well as the connection name and a count of the number of time used. Note the `conn` reference actually holds the second connection created since we didn't capture the first.
 
 We can use the connection by sending it to various `SrpcClient` calls. For example, to POST a request to reverse the string `string`:
 
-```elixir
-client:iex> conn |> SrpcClient.post("/reverse", "string")
-{:ok, "gnirts"}
-```
+<pre><code class="elixir"><strong>client &there4;</strong> conn |> SrpcClient.post("/reverse", "string")
+{{:ok, "gnirts"}, #PID<0.228.0>}
+</code></pre>
 
 Inspecting the info again, we'll see the connection has been updated:
 
-```elixir
-client:iex> SrpcClient.info(conn)
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.info(conn)
 %SrpcClient.Conn.Info{
   accessed: 11,
   count: 1,
   created: 32,
   keyed: 32,
   name: :LibCon
-```
+</code></pre>
 
 Let's close the connection and get a new one:
 
-```elixir
-client:iex> SrpcClient.close(conn)
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.close(conn)
 :ok
 
-client:iex> {:ok, conn} = SrpcClient.connect()
+<strong>client &there4;</strong> {:ok, conn} = SrpcClient.connect()
 {:ok, #PID<0.304.0>}
 
-client:iex> SrpcClient.info(conn)
+<strong>client &there4;</strong> SrpcClient.info(conn)
 %SrpcClient.Conn.Info{
   accessed: 11,
   count: 0,
@@ -317,8 +306,8 @@ client:iex> SrpcClient.info(conn)
   name: :LibConnection_3
 }
 
-client:iex> :observer.start
-```
+<strong>client &there4;</strong> :observer.start
+</code></pre>
 
 The `SrpcClient` application structure at this point looks like:
 
@@ -326,15 +315,13 @@ The `SrpcClient` application structure at this point looks like:
 
 There are two connections. `LibConnection_3` is referenced by our current `conn`, whereas `LibConnetion_1` is the first connection we didn't capture. Let's clean up a bit and close that dangling connection. `SrpcClient.connections/0` returns a list of `{atom, pid}` pairs which we can use to close `LibConnection_1`:
 
-```elixir
-client:iex> SrpcClient.connections() |> Keyword.get(:LibConnection_1) |> SrpcClient.close()
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.connections() |> Keyword.get(:LibConnection_1) |> SrpcClient.close()
 :ok
-```
+</code></pre>
 
 We can get detailed information regarding a connection using `SrpcClient.info/2`:
 
-```elixir
-client:iex> conn |> SrpcClient.info(:full)
+<pre><code class="elixir"><strong>client &there4;</strong> conn |> SrpcClient.info(:full)
 %SrpcClient.Conn{
   accessed: -576460526,
   conn_id: "nPF4MDLrMp8PjNBpb6tBhQfjd6",
@@ -343,6 +330,8 @@ client:iex> conn |> SrpcClient.info(:full)
   entity_id: "srpc_demo_Gc6kmLMM",
   keyed: -576460526,
   name: :LibConnection_3,
+  pid: #PID<0.304.0>,
+  reconnect: nil,
   req_mac_key: <<212, 250, 216, 31, 26, 224, 23, 3, 154, 87, 90, 226, 33, 113,
     192, 47, 35, 46, 90, 242, 111, 96, 133, 149, 27, 172, 76, 134, 150, 213,
     148, 185>>,
@@ -361,16 +350,15 @@ client:iex> conn |> SrpcClient.info(:full)
   type: :lib,
   url: "http://localhost:8082"
 }
-```
+</code></pre>
 
 The information includes four binary keys. The `*_sym_key`s are used for encryption (confidentiality) and the `*_mac_key`s are used for message authentication codes (data integrity and origin). Distinct keys are used in each direction of messaging.
 
-Let's see how this connection info is handled on the server side. For the `SrpcWorld` demo, server-side SRPC processing is handled by the `SrpcPlug` module. There is an `:srpc_srv` module (written in Erlang) but it is a library, not an application, and hence has no state. It is up to the server-side application to provide necessary SRPC state management via a module providing the `:srpc_handler` behaviour. In the `SrpcWorld` demo, the configured [SRPC handler](#ServerConfig) is `SrpcWorld.Server.SrpcHandler`. 
+Let's see how this connection info is handled on the server side. For the `SrpcWorld` demo, server-side SRPC processing is handled by the `SrpcPlug` module. There is an `:srpc_srv` module (written in Erlang) but it is a library, not an application, and hence has no state. It is up to the server-side application to provide necessary SRPC state management via a module providing the `:srpc_handler` behaviour. In the `SrpcWorld` demo, the configured [SRPC handler](#ServerConfig) is `SrpcWorld.Server.SrpcHandler`.
 
 To view the server-side information for the `LibConnection_3` connection, switch over to the server IEx shell and use the `conn_id` from the `SrpcClient.info/2` listing above:
 
-```elixir
-server:iex> SrpcWorld.Server.SrpcHandler.get_conn("nPF4MDLrMp8PjNBpb6tBhQfjd6")
+<pre><code class="elixir"><strong>server &there4;</strong> SrpcWorld.Server.SrpcHandler.get_conn("nPF4MDLrMp8PjNBpb6tBhQfjd6")
 {:ok,
  %{
    conn_id: "nPF4MDLrMp8PjNBpb6tBhQfjd6",
@@ -391,7 +379,7 @@ server:iex> SrpcWorld.Server.SrpcHandler.get_conn("nPF4MDLrMp8PjNBpb6tBhQfjd6")
    sym_alg: :aes256,
    type: :lib
  }}
-```
+</code></pre>
 
  Note the `conn_id`, `entity_id`, `type` and cryptographic keys are identical on each side of the connection.
 
@@ -401,55 +389,59 @@ server:iex> SrpcWorld.Server.SrpcHandler.get_conn("nPF4MDLrMp8PjNBpb6tBhQfjd6")
 
 On the client, let's register a new user:
 
-```elixir
-client:iex> SrpcClient.register("chigurh", "call it")
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.register("chigurh", "call it")
 :ok
-```
+</code></pre>
 
 and then look at what information is received and maintained by the server:
 
-```elixir
-server:iex> {:ok, anton} = SrpcWorld.Server.SrpcHandler.get_registration("chigurh")
+<pre><code class="elixir"><strong>server &there4;</strong> SrpcWorld.Server.SrpcHandler.get_registration("chigurh")
 {:ok,
  %{
-   kdf_salt: <<30, 236, 221, 5, 212, 53, 212, 93, 217, 120, 128, 147>>,
-   srp_salt: <<167, 55, 209, 145, 231, 80, 97, 187, 254, 127, 142, 111, 78, 22,
-     47, 41, 212, 166, 108, 74>>,
+   kdf_salt: <<111, 86, 19, 83, 159, 172, 246, 136, 209, 166, 225, 167>>,
+   srp_salt: <<145, 111, 37, 210, 141, 70, 10, 110, 205, 40, 104, 204, 30, 230,
+     104, 151, 194, 218, 247, 149>>,
    user_id: "chigurh",
-   verifier: <<142, 20, 242, 36, 208, 214, 100, 242, 134, 69, 249, 127, 210,
-     202, 140, 6, 239, 186, 164, 232, 230, 232, 95, 245, 92, 79, 86, 124, 45,
-     227, 73, 95, 88, 6, 48, 183, 29, 198, 6, 100, 206, 58, 178, 249, ...>>
+   verifier: <<126, 98, 148, 155, 243, 98, 176, 154, 54, 24, 181, 75, 200, 123,
+     241, 114, 37, 93, 85, 54, 198, 144, 124, 231, 222, 244, 96, 110, 208, 251,
+     130, 175, 190, 96, 140, 27, 131, 251, 27, 95, 241, 178, 238, 154, 143, 94,
+     136, 223, 241, 206, 214, 3, 44, 127, 246, 179, 93, 48, 202, 243, 211, 13,
+     197, 193, 134, 180, 171, 75, 55, 142, 31, 40, 85, 191, 204, 142, 127, 61,
+     163, 239, 219, 38, 193, 119, 216, 223, 8, 168, 238, 3, 167, 57, 225, 111,
+     143, 64, 115, 208, 183, 245, 110, 148, 244, 145, 77, 181, 158, 13, 180, 60,
+     3, 204, 21, 14, 51, 69, 139, 165, 236, 178, 78, 82, 149, 159, 199, 106,
+     190, 128, 198, 187, 204, 154, 15, 94, 55, 74, 112, 48, 162, 153, 127, 154,
+     245, 93, 13, 244, 103, 237, 107, 96, 164, 24, 100, 117, 138, 110, 134, 245,
+     175, 207, 27, 23, 243, 78, 9, 121, 109, 220, 15, 9, 42, 233, 48, 242, 155,
+     126, 119, 238, 217, 13, 32, 159, 181, 0, 44, 96, 13, 164, 172, 131, 241,
+     155, 185, 5, 93, 33, 230, 117, 2, 14, 46, 43, 62, 124, 216, 18, 250, 199,
+     194, 196, 95, 27, 31, 222, 208, 117, 243, 238, 66, 59, 112, 240, 179, 199,
+     205, 28, 60, 15, 227, 35, 102, 72, 12, 110, 185, 11, 114, 214, 246, 48, 78,
+     154, 85, 154, 29, 15, 46, 148, 241, 254, 101, 182, 84, 52, 71, 250>>
  }}
+</code></pre>
 
-server:iex> Base.encode16(anton[:verifier])
-"8E14F224D0D664F28645F97FD2CA8C06EFBAA4E8E6E85FF55C4F567C2DE3495F580630B71DC60664CE3AB2F94823584F8C4571033842A5ED01C1ABE43468070F9DEF1B67C838E4C54F00BD6F95B08BB6362B42C8DD9325BEAF5DC2E33F8046B55F18007C814EE243CA8631CA4EB2142005469B467C2270DE48762FE28FE585DD9F9AC08DE61CFBE0F68734B83492C0925B9234AD62AF7A0CE93A78F934F8F7BDAF2283943F2A84C93D45CEC621E3B9A65D8114386CD57F7DB96008E63D7940A806523D260CFC5DD9E130A92416AE6758DBA944504CBA44AF9F5A0ABA42E29CC1D157A9491DE0260AC83F65AB4B9FE307CED906CE80D8C7ABC52BE5EA4B1F29EE"
-```
-
-Since the `verifier` output was elided we output a hex version to see the full 256 bytes.
-
-`SrpcClient.register/2` calculates the `verifier` using `kdf_salt` for PDKDF2 key stretching of the password, which is then input into the calculation of the user's [SRP](http://srp.stanford.edu/design.html) private key, which uses `srp_salt`. The server-side processing maintains these three binary values for each user. 
+`SrpcClient.register/2` creates random `kdf_salt` and `srp_salt` values. `kdf_salt` is used for PDKDF2 key stretching of the user's password, whereas `srp_salt` is used to create the user's [SRP](http://srp.stanford.edu/design.html) private key from the stretched password. The private key is then used to calculate the user's `verifier`. The client sends these values to the server for long-term storage.
 
 <div style="text-align: right">[Table of Contents](#TOC)</div>
 
 ##### <a name="UserConnection"></a>SRPC User Connection
 
-During SRPC user authentication, the server sends the `kdf_salt` and `srp_salt` values back to the client. This prevents the client from having to maintain any long term secret user state, allowing the user's password to fulfill that role. The client uses the salts and user password to recreate the user's [SRP](http://srp.stanford.edu/design.html) private key. The client and server are thus able to use the [SRP](http://srp.stanford.edu/design.html) protocol to dynamically calculate a cryptographically strong shared secret, which is used as keying material to generate the four SRPC connection keys.
+`SrpcClient.connect/2` creates an SRPC connection for a specific user:
 
-`SrpcClient.connect/2` creates a connection for a specific user:
-
-```elixir
-client:iex> {:ok, anton} = SrpcClient.connect("chigurh", "call it")
+<pre><code class="elixir"><strong>client &there4;</strong> {:ok, anton} = SrpcClient.connect("chigurh", "call it")
 {:ok, #PID<0.246.0>}
-```
+</code></pre>
 
-Unlike the previous use of `SrpcClient.connect/0`, which returned an SRPC lib connection, `SrpcClient.connect/2` returns an SRPC __*user connection*__ that is bound to a specific user. Such a user connection achieves mutual authentication between the user (via the user password) and the server (via the stored user verifier), ensuring that the client application is acting on behalf of a specified user known to the server.
+Unlike the previous use of `SrpcClient.connect/0`, which returned an SRPC lib connection, `SrpcClient.connect/2` returns an SRPC __*user connection*__ that is bound to a specific user. Creating such a user connection is the SRPC means of logging in a user. During the connection process, the server sends the user's `kdf_salt` and `srp_salt` to the client so the user's [SRP](http://srp.stanford.edu/design.html) private key can be recreated as part of SRPC mutual authentication. This prevents the client from having to maintain any long term user state. SRP's zero-knowledge password authentication scheme means the user's password _never_ leaves the client and hence is never transmitted or known to the server.
+
+Using the [SRP](http://srp.stanford.edu/design.html) protocol, the client and server dynamically calculate a shared secret from random empheral values. This cryptographically strong shared secret is used as keying material to generate the four SRPC connection keys.
 
 User registration and login both require an existing SRPC connection to secure user information during processing. The functions `SrpcClient.register/2` and `SrpcClient.connect/2` used above automatically create an SRPC lib connection to perform their duties and close the connection when done. Functions `SrpcClient.register/3` and `SrpcClient.connect/3` accept an existing `SrpcClient.Connection` as their first argument.
 
 As with previous connections, we can inspect a user connection using `SrpcClient.info/1`:
 
-```elixir
-client:iex> anton |> SrpcClient.info(:full)
+<pre><code class="elixir"><strong>client &there4;</strong> anton |> SrpcClient.info(:full)
 %SrpcClient.Conn{
   accessed: -576460062,
   conn_id: "hNpjfBmmR3pRP7fnhTGG2fgdqT",
@@ -458,6 +450,8 @@ client:iex> anton |> SrpcClient.info(:full)
   entity_id: "chigurh",
   keyed: -576460062,
   name: :UserConnection_1,
+  pid: #PID<0.246.0>,
+  reconnect: nil,
   req_mac_key: <<235, 135, 142, 163, 59, 22, 190, 42, 225, 27, 174, 142, 103,
     198, 195, 70, 3, 233, 82, 176, 156, 224, 193, 60, 133, 238, 89, 50, 23, 166,
     94, 28>>,
@@ -476,12 +470,11 @@ client:iex> anton |> SrpcClient.info(:full)
   type: :user,
   url: "http://localhost:8082"
 }
-```
+</code></pre>
 
 and on the server:
 
-```elixir
-server:iex> SrpcWorld.Server.SrpcHandler.get_conn("hNpjfBmmR3pRP7fnhTGG2fgdqT")
+<pre><code class="elixir"><strong>server &there4;</strong> SrpcWorld.Server.SrpcHandler.get_conn("hNpjfBmmR3pRP7fnhTGG2fgdqT")
 {:ok,
  %{
    conn_id: "hNpjfBmmR3pRP7fnhTGG2fgdqT",
@@ -502,7 +495,7 @@ server:iex> SrpcWorld.Server.SrpcHandler.get_conn("hNpjfBmmR3pRP7fnhTGG2fgdqT")
    sym_alg: :aes256,
    type: :user
  }}
-```
+</code></pre>
 
 SRPC _lib_ and _user_ connections are identical in terms of use. The only difference is a lib connection represents a mutually authenticated channel between the SRPC framework libraries in use, whereas a user connection __*also*__ ensures mutual authentication via the user's password (client) and verifier (server). Both user registration and login require an existing SRPC lib or user connection. If a user connection is used, that connection must be rooted in an SRPC lib connection. This ensures no user information is ever transmitted unencrypted.
 
@@ -510,15 +503,14 @@ SRPC _lib_ and _user_ connections are identical in terms of use. The only differ
 
 ##### <a name="KeyRefresh"></a>Key Refresh
 
-As noted earlier, SRPC uses separate keys for the encryption and authentication of each message, and a separate pair of key for each message direction (origin). These four keys can be refreshed at any time. Refreshed keys limit the per key material available for cryptanalysis as well as the vulnerability window of a compromised key.
+As noted earlier, SRPC uses separate keys for the encryption and authentication of each message, and a separate pair of keys for messaging in each direction. These four keys can be refreshed at any time. Refreshed keys limit the per key material available for cryptanalysis as well as the vulnerability window of a compromised key.
 
-Let's create and use a new user connection for `anton`. We'll send the `SrpcServer` a few Anton quotes to reverse.
+Let's create and use a new user connection for `anton`, then send the `SrpcServer` a few Anton quotes to reverse.
 
-```elixir
-client:iex> {:ok, anton} = SrpcClient.connect("chigurh", "call it")
+<pre><code class="elixir"><strong>client &there4;</strong> {:ok, anton} = SrpcClient.connect("chigurh", "call it")
 {:ok, #PID<0.235.0>}
 
-client:iex> [
+<strong>client &there4;</strong> [
       "That depends. Do you see me?",
       "If the rule you followed brought you to this, of what use was the rule?",
       "I know where you are.",
@@ -526,7 +518,7 @@ client:iex> [
       "Would you hold still, please, sir?",
       "That's foolish. You pick the one right tool."
     ] |> Enum.map(fn quote ->
-      {:ok, reversed} = anton |> SrpcClient.post("/reverse", quote)
+      {{:ok, reversed}, _} = anton |> SrpcClient.post("/reverse", quote)
       reversed
     end)
 ["?em ees uoy oD .sdneped tahT",
@@ -536,7 +528,7 @@ client:iex> [
  "?ris ,esaelp ,llits dloh uoy dluoW",
  ".loot thgir eno eht kcip uoY .hsiloof s'tahT"]
 
-client:iex> anton |> SrpcClient.info(:full)
+<strong>client &there4;</strong> anton |> SrpcClient.info(:full)
 %SrpcClient.Conn{
   accessed: -576460736,
   conn_id: "9pp8JJ66PDM9rGMHgJjmjrj8B7",
@@ -545,6 +537,8 @@ client:iex> anton |> SrpcClient.info(:full)
   entity_id: "chigurh",
   keyed: -576460741,
   name: :UserConnection_1,
+  pid: #PID<0.235.0>,
+  reconnect: nil,
   req_mac_key: <<215, 97, 30, 11, 49, 226, 57, 142, 232, 238, 67, 97, 230, 37,
     64, 30, 34, 51, 132, 31, 209, 230, 114, 110, 172, 186, 73, 255, 99, 86, 68,
     164>>,
@@ -563,15 +557,14 @@ client:iex> anton |> SrpcClient.info(:full)
   type: :user,
   url: "http://localhost:8082"
 }
-```
+</code></pre>
 
-We can see from `crypt_count` the `anton` connection keys have been used **6** times.
+We can see from the `crypt_count` above the `anton` connection keys have been used **6** times. Let's manually refresh the keys:
 
-```elixir
-client:iex> SrpcClient.refresh(anton)
+<pre><code class="elixir"><strong>client &there4;</strong> SrpcClient.refresh(anton)
 :ok
 
-client:iex> anton |> SrpcClient.info(:full)
+<strong>client &there4;</strong> anton |> SrpcClient.info(:full)
 %SrpcClient.Conn{
   accessed: -576460669,
   conn_id: "9pp8JJ66PDM9rGMHgJjmjrj8B7",
@@ -580,6 +573,8 @@ client:iex> anton |> SrpcClient.info(:full)
   entity_id: "chigurh",
   keyed: -576460669,
   name: :UserConnection_1,
+  pid: #PID<0.235.0>,
+  reconnect: nil,
   req_mac_key: <<40, 26, 100, 16, 158, 107, 135, 122, 159, 244, 35, 25, 219,
     229, 126, 53, 53, 82, 90, 223, 29, 185, 66, 198, 234, 2, 53, 202, 155, 146,
     122, 253>>,
@@ -598,12 +593,11 @@ client:iex> anton |> SrpcClient.info(:full)
   type: :user,
   url: "http://localhost:8082"
 }
-
-```
+</code></pre>
 
 After refreshing the keys, the `crypt_count` is back to zero and the four keys are different than before the refresh.
 
-Manual key refresh is useful, but since `SrpcClient` is keeping count it is quite easy to have the keys auto-refreshed after a specified usage. To do so, we add a `key_limit` option to the client configuration file:
+Manual key refresh is useful, but since `SrpcClient` is already keeping count it is quite easy to have the keys auto-refreshed after a specified usage. To do so, we need to add a `key_limit` option to the client configuration file:
 
 ```elixir
 config :srpc_client,
@@ -614,11 +608,10 @@ config :srpc_client,
 
 After [restarting](#Start) the client (Cntl-C twice to stop the IEx process), we can create and use a new `anton` connection as before. Restarting the server is not necessary, but if you do, don't forget to register user `chigurh`.
 
-```elixir
-client:iex> {:ok, anton} = SrpcClient.connect("chigurh", "call it")
+<pre><code class="elixir"><strong>client &there4;</strong> {:ok, anton} = SrpcClient.connect("chigurh", "call it")
 {:ok, #PID<0.275.0>}
 
-client:iex> anton |> SrpcClient.info(:full)
+<strong>client &there4;</strong> anton |> SrpcClient.info(:full)
 %SrpcClient.Conn{
   accessed: -576460744,
   conn_id: "dMrbdnf7QDdBm6BGFrD84Nf4jQ",
@@ -627,6 +620,8 @@ client:iex> anton |> SrpcClient.info(:full)
   entity_id: "chigurh",
   keyed: -576460744,
   name: :UserConnection_1,
+  pid: #PID<0.275.0>,
+  reconnect: nil,
   req_mac_key: <<63, 139, 135, 72, 121, 83, 85, 238, 221, 66, 177, 179, 222,
     119, 48, 137, 255, 234, 138, 32, 140, 212, 97, 71, 157, 158, 99, 191, 92,
     140, 242, 146>>,
@@ -646,7 +641,7 @@ client:iex> anton |> SrpcClient.info(:full)
   url: "http://localhost:8082"
 }
 
-client:iex> [
+<strong>client &there4;</strong> [
       "That depends. Do you see me?",
       "If the rule you followed brought you to this, of what use was the rule?",
       "I know where you are.",
@@ -654,7 +649,7 @@ client:iex> [
       "Would you hold still, please, sir?",
       "That's foolish. You pick the one right tool."
     ] |> Enum.map(fn quote ->
-      {:ok, reversed} = anton |> SrpcClient.post("/reverse", quote)
+      {{:ok, reversed}, _} = anton |> SrpcClient.post("/reverse", quote)
       reversed
     end)
 ["?em ees uoy oD .sdneped tahT",
@@ -664,7 +659,7 @@ client:iex> [
  "?ris ,esaelp ,llits dloh uoy dluoW",
  ".loot thgir eno eht kcip uoY .hsiloof s'tahT"]
 
-client:iex> anton |> SrpcClient.info(:full)
+<strong>client &there4;</strong> anton |> SrpcClient.info(:full)
 %SrpcClient.Conn{
   accessed: -576460709,
   conn_id: "dMrbdnf7QDdBm6BGFrD84Nf4jQ",
@@ -691,9 +686,9 @@ client:iex> anton |> SrpcClient.info(:full)
   type: :user,
   url: "http://localhost:8082"
 }
-```
+</code></pre>
 
-Comparing the before and after information for the `anton` connection we see the keys are refreshed and the `crypt_count` is 2, not 6. That's because we sent 6 messages with a `key_limit` of 4, so after the 4th message the keys were refreshed before sending the last 2 messages.
+Comparing the before and after information for the `anton` connection we see the keys are refreshed and the `crypt_count` is 2. That's because we sent 6 messages with a `key_limit` of 4, so after the 4th message the keys were refreshed before sending the last 2 messages.
 
 It is also possible to configure `SrpcClient` to refresh the keys based on time of use:
 
@@ -705,4 +700,73 @@ config :srpc_client,
   key_refresh: 60
 ```
 
-The above configuration would limit the keys to 4 uses, as well as from being used for no more than 60 seconds. These configuration settings can be used individually or together. Both take effect _before_ each message is sent, i.e., the above would trigger key refresh on the 5th message within 60 seconds, or on the Nth message (N < 5) after 60 seconds.
+The above configuration would limit the keys to a maximum of 4 uses, as well as to being used for no more than 60 seconds. These configuration settings can be used together or individually. Both take effect _before_ each message is sent, i.e., the above configuration would trigger key refresh on the 5th message within 60 seconds, or on the Nth message (N < 5) after 60 seconds.
+
+<div style="text-align: right">[Table of Contents](#TOC)</div>
+
+##### <a name="Reconnect"></a>Reconnect
+
+As we've seen, we can create either an SRPC lib or user connection between the client and the server. We've also seen that both the client and the server maintain information regarding this connection. For obvious reasons, the server can't keep client connection information indefinitely. The `SrpcWorld.Server` is configured (in the `kncache` configuration section) to keep each client's connection information for **3600** seconds. The server updates the client connection access time whenever it receives a message from the client, so the **3600** seconds actually represents an _inactivity_ time after which the server will purge the connection information if no messages have been received from the client.
+
+We can mimic the server purging a client connection by using the `SrpcHandler` configured for the server. First we'll create a connection and get the resulting `conn_id`:
+
+<pre><code class="elixir"><strong>client &there4;</strong> {:ok, conn} = SrpcClient.connect()
+{:ok, #PID<0.279.0>}
+
+<strong>client &there4;</strong> conn |> SrpcClient.info(:full) |> Map.get(:conn_id)
+"PtMq76Nmth6bDDrnhBbq4mtmGM"
+</code></pre>
+
+Then on the server, we'll purge that connection:
+
+<pre><code class="elixir"><strong>server &there4;</strong> SrpcWorld.Server.SrpcHandler.delete_conn("PtMq76Nmth6bDDrnhBbq4mtmGM")
+:ok
+</code></pre>
+
+Now, back on the client, we'll attempt to reverse a string with the now defunct connection:
+
+<pre><code class="elixir"><strong>client &there4;</strong> conn |> SrpcClient.post("/reverse", "string")
+{{:invalid, "Stale connection"}, #PID<0.279.0>}
+</code></pre>
+
+The client could check its own maintained access time for its connection before each use and create a new connection if necessary, but that would require the client know the connection retention time of the server. Furthermore, in the event of server restart, any existing client connections will be defunct.
+
+`SrpcClient` provides a means to auto-reconnect a stale connection on-the-fly. In the `:srpc_client` [configuration](#ClientConfig) we'll add a `reconnect` option:
+
+```elixir
+config :srpc_client,
+  srpc_file: "priv/client.srpc",
+  transport: SrpcPoison,
+  key_limit: 4,
+  key_refresh: 60,
+  reconnect: true
+```
+
+With `reconnect` set to `true`, the first time the SRPC framework detects we are using a stale client it will attempt to reconnect. To see this in action, we'll need to [restart](#Start) the client (Cntl-C twice to stop the IEx process) to pick up the above configuration change.
+
+On the client:
+
+<pre><code class="elixir"><strong>client &there4;</strong> {:ok, conn} = SrpcClient.connect()
+{:ok, #PID<0.269.0>}
+
+<strong>client &there4;</strong> conn |> SrpcClient.info(:full) |> Map.get(:conn_id)
+"2d3fNt4g4H7MNr7JBfLLbR29hp"
+</code></pre>
+
+On the server:
+
+<pre><code class="elixir"><strong>server &there4;</strong> SrpcWorld.Server.SrpcHandler.delete_conn("2d3fNt4g4H7MNr7JBfLLbR29hp")
+:ok
+</code></pre>
+
+And finally, on the client:
+
+<pre><code class="elixir"><strong>client &there4;</strong> {{:ok, result}, conn} = conn |> SrpcClient.post("/reverse", "string")
+{{:ok, "gnirts"}, #PID<0.273.0>}
+</code></pre>
+
+Notice we changed the code to rebind `conn` by pattern matching the return from the `SrpcClient.post/3` call. If an auto-reconnect occurs, the returned **pid** will be for the new connection and the old connection will be discarded. We can see in the interactions above the original `conn` pid _#PID<0.269.0>_ was updated to _#PID<0.273.0>_. If no reconnection is required (i.e., the `conn` is still valid on the server), the returned **pid** will be the same as that passed to `SrpcClient`.
+
+##### <a name="Fin"></a>Fin
+
+That's it for the `SrpcWorld` demo of the SRPC framework. Please feel free to send questions or comments to Paul at _**paul@knoxen.com**_.
