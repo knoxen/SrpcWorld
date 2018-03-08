@@ -4,6 +4,10 @@ config :srpc_plug,
   srpc_file: "priv/server.srpc",
   srpc_handler: SrpcWorld.Server.SrpcHandler
 
+config :plug, :statuses, %{
+  451 => "Srpc Demo Expired"
+}
+
 config :cowboy,
   cowboy_opts: [
     port: 8082,
