@@ -75,8 +75,8 @@ defmodule SrpcWorld.Client do
   """
   def handle_call(:good_bye, _from, :no_conn), do: {:reply, "Not connected", :no_conn}
 
-  def handle_call(:good_bye, _from, conn) do
-    SrpcClient.close(conn)
+  def handle_call(:good_bye, _from, conn_pid) do
+    SrpcClient.close(conn_pid)
     {:reply, "Hasta luego", :no_conn}
   end
 
@@ -89,7 +89,7 @@ defmodule SrpcWorld.Client do
   ##  the call.
   ## -----------------------------------------------------------------------------------------------
   def handle_call(term, _from, :no_conn), do: conn_call(term, connect())
-  def handle_call(term, _from, conn), do: conn_call(term, {:ok, conn})
+  def handle_call(term, _from, conn_pid), do: conn_call(term, {:ok, conn_pid})
 
   ## ===============================================================================================
   ##
@@ -99,63 +99,63 @@ defmodule SrpcWorld.Client do
   ## -----------------------------------------------------------------------------------------------
   ##  If a connection exists, make the call
   ## -----------------------------------------------------------------------------------------------
-  defp conn_call(term, {:ok, conn}), do: conn |> call(term)
+  defp conn_call(term, {:ok, conn_pid}), do: conn_pid |> call(term)
   defp conn_call(_term, error), do: {:reply, error, :no_conn}
 
   ## -----------------------------------------------------------------------------------------------
   ##  Hello name
   ## -----------------------------------------------------------------------------------------------
-  defp call(conn, {:hello, name}) do
-    conn
+  defp call(conn_pid, {:hello, name}) do
+    conn_pid
     |> SrpcClient.get("/hello?name=#{name}")
-    |> resp_reply(conn)
+    |> resp_reply
   end
 
   ## -----------------------------------------------------------------------------------------------
   ##  Reverse string (binary)
   ## -----------------------------------------------------------------------------------------------
-  defp call(conn, {:reverse, string}) when is_binary(string) do
-    conn
+  defp call(conn_pid, {:reverse, string}) when is_binary(string) do
+    conn_pid
     |> SrpcClient.post("/reverse", string)
-    |> resp_reply(conn)
+    |> resp_reply
   end
 
   ## -----------------------------------------------------------------------------------------------
   ##  Reverse integer bytes. Note the SrpcWorld server reverses bytes, not bits.
   ## -----------------------------------------------------------------------------------------------
-  defp call(conn, {:reverse, int}) when is_integer(int) do
+  defp call(conn_pid, {:reverse, int}) when is_integer(int) do
     data = :srpc_util.int_to_bin(int)
 
-    conn
+    conn_pid
     |> SrpcClient.post("/reverse", data)
     |> case do
-      {:ok, resp} ->
-        {:reply, Base.encode16(resp), conn}
+      {{:ok, resp}, conn_pid} ->
+        {:reply, Base.encode16(resp), conn_pid}
 
       error ->
-        {:reply, error, conn}
+        {:reply, error, conn_pid}
     end
   end
 
   ## -----------------------------------------------------------------------------------------------
   ##  Reject reverse attempt
   ## -----------------------------------------------------------------------------------------------
-  defp call(conn, {:reverse, whatever}) do
-    {:reply, "Don't know how to reverse #{inspect(whatever)}", conn}
+  defp call(conn_pid, {:reverse, whatever}) do
+    {:reply, "Don't know how to reverse #{inspect(whatever)}", conn_pid}
   end
 
   ## -----------------------------------------------------------------------------------------------
   ##  Register user
   ## -----------------------------------------------------------------------------------------------
-  defp call(conn, {:register, user_id, password}) do
-    {:reply, SrpcClient.register(conn, user_id, password), conn}
+  defp call(conn_pid, {:register, user_id, password}) do
+    {:reply, conn_pid |> SrpcClient.register(user_id, password), conn_pid}
   end
 
   ## -----------------------------------------------------------------------------------------------
   ##  If the resp term is OK, just send the actual resp; otherwise send the error term
   ## -----------------------------------------------------------------------------------------------
-  defp resp_reply({:ok, resp}, conn), do: {:reply, resp, conn}
-  defp resp_reply(error, conn), do: {:reply, error, conn}
+  defp resp_reply({{:ok, resp}, conn_pid}), do: {:reply, resp, conn_pid}
+  defp resp_reply({error, conn_pid}), do: {:reply, error, conn_pid}
 
   ## -----------------------------------------------------------------------------------------------
   ##  Create a lib connection to the SrpcWorld server
