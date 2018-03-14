@@ -14,6 +14,10 @@ config :cowboy,
     acceptors: 5
   ]
 
+config :entropy_string,
+  bits: :session,
+  charset: :charset32
+
 config :kncache,
   caches: [
     srpc_exch: 30,

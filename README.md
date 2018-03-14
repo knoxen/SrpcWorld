@@ -188,6 +188,18 @@ config :cowboy,
     port: 8082,
     acceptors: 5
   ]
+
+```
+
+The `SrpcWorld.Server.SrpcHandler` module uses
+[`EntropyString`](https://hex.pm/packages/entropy_string) to generate random connection IDs.
+These settings configure the number of entropy bits in the ID, as well as the characters used.
+
+###### :entropy_string
+```elixir
+config :entropy_string,
+  bits: :session,
+  charset: :charset32
 ```
 
 The `SrpcWorld.Server.SrpcHandler` module uses `kncache` (a simple cache) for maintaining server-side data. These settings configure the necessary caches and default TTLs.

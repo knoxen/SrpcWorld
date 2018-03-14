@@ -5,18 +5,27 @@ defmodule SrpcWorld.Server.SrpcHandler do
 
   @behaviour :srpc_handler
 
+  # Entropy `bits` specified in `:entropy_string` configuration, or `:session` by default.
+  @bits Application.get_env(:entropy_string, :bits) || :session
+  
   defmodule ConnId do
     @moduledoc """
-    Provide random strings from the `EntropyString.CharSet.charset32/0` character set.
-    See [EntropyString](https://hexdocs.pm/entropy_string/EntropyString.html)
+    Provide random connection IDs using
+    [EntropyString](https://hexdocs.pm/entropy_string/EntropyString.html).
     """
-    use(EntropyString, charset: EntropyString.CharSet.charset32())
+    # `EntropyString.CharSet` specified in `:entropy_string` configuration, or `:charset32` by
+    # default.
+    @charset Application.get_env(:entropy_string, :charset) || :charset32
+    
+    use(EntropyString, charset: @charset)
   end
 
   @doc """
-  Provide 126-bit entropy random string for connection ID.
+  Random connection ID
   """
-  def conn_id, do: ConnId.session_id()
+  def conn_id do
+    ConnId.random(@bits)
+  end
 
   @doc """
   Store SRPC exchange info. Exchange info is ephemeral data related to a connection that has yet
@@ -83,7 +92,7 @@ defmodule SrpcWorld.Server.SrpcHandler do
 
   @doc """
   Determine whether a request nonce is valid. Nonces are only checked if the request age is being
-  validated, in which case the nonces only need to be retained for a period slightly longer than 
+  validated, in which case the nonces only need to be retained for a period slightly longer than
   the request age tolerance itself.
   __*Optional*__
   """

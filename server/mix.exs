@@ -22,7 +22,7 @@ defmodule SrpcWorld.Server.Mixfile do
     [
       {:plug, "~> 1.4"},
       {:cowboy, "~> 1.1"},
-      {:entropy_string, "~> 1.0"},
+      {:entropy_string, "~> 1.2"},
       {:poison, "~> 3.1"},
       {:srpc_plug, path: "local/srpc_plug", compile: false},
       {:srpc_srv, path: "local/srpc_srv", compile: false, override: true},
